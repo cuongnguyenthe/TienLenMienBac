@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Tiến Lên Miền Bắc</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="game-table">
+        <div id="play-area">
+            <div id="last-played-hand"></div>
+        </div>
+
+        <div id="player-1" class="player-area top">
+            <div class="player-name">Player 2</div>
+            <div class="card-count"></div>
+        </div>
+        <div id="player-2" class="player-area left">
+            <div class="player-name">Player 3</div>
+            <div class="card-count"></div>
+        </div>
+        <div id="player-3" class="player-area right">
+             <div class="player-name">Player 4</div>
+            <div class="card-count"></div>
+        </div>
+
+        <div id="player-0" class="player-area bottom">
+             <div class="player-name">Bạn</div>
+            <div class="hand"></div>
+        </div>
+    </div>
+
+    <div id="controls">
+        <div id="message-box">Bấm "Bắt đầu" để chia bài.</div>
+        <button id="play-btn">Đánh Bài</button>
+        <button id="pass-btn">Bỏ Lượt</button>
+        <button id="sort-btn">Sắp xếp</button>
+    </div>
+
+    <button id="start-game-btn">Bắt Đầu Trò Chơi</button>
+
+    <script src="game.js"></script>
+</body>
+</html>
