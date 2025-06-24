@@ -54,7 +54,7 @@ body {
 /* Player positions */
 .bottom { bottom: 0; left: 50%; transform: translateX(-50%); }
 .bottom .hand { cursor: pointer; }
-.bottom .card { margin: 0 -30px; transition: transform 0.2s; }
+.bottom .card { margin: 0 0px; transition: transform 0.2s; }
 .bottom .card:hover { transform: translateY(-10px); }
 .top { top: 0; left: 50%; transform: translateX(-50%); }
 .left { top: 50%; left: 0; transform: translateY(-50%); }
