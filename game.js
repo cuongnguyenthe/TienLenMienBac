@@ -1,7 +1,6 @@
 // --- ĐỊNH NGHĨA CÁC HẰNG SỐ CỦA GAME ---
 const SUITS = { "♠": 0, "♣": 1, "♦": 2, "♥": 3 };
 const RANKS = { "3": 0, "4": 1, "5": 2, "6": 3, "7": 4, "8": 5, "9": 6, "10": 7, "J": 8, "Q": 9, "K": 10, "A": 11, "2": 12 };
-const RANK_NAMES = Object.keys(RANKS);
 
 // --- LỚP LÁ BÀI (CARD) ---
 class Card {
@@ -54,7 +53,13 @@ class Game {
         this.sortBtn = document.getElementById('sort-btn');
         this.startBtn = document.getElementById('start-game-btn');
         
+        // SỬA LỖI: Thêm nút "Chơi lại"
+        this.playAgainBtn = document.getElementById('play-again-btn');
+        
         this.startBtn.addEventListener('click', () => this.start());
+        // SỬA LỖI: Gắn sự kiện cho nút "Chơi lại"
+        this.playAgainBtn.addEventListener('click', () => this.start());
+
         this.playBtn.addEventListener('click', () => this.humanPlay());
         this.passBtn.addEventListener('click', () => this.humanPass());
         this.sortBtn.addEventListener('click', () => {
@@ -66,6 +71,11 @@ class Game {
     start() {
         this.gameOver = false;
         this.startBtn.style.display = 'none';
+        // SỬA LỖI: Ẩn nút "Chơi lại" khi bắt đầu game mới
+        this.playAgainBtn.style.display = 'none';
+
+        document.getElementById('controls').style.visibility = 'visible';
+
         this.deck = [];
         for (const suit in SUITS) {
             for (const rank in RANKS) {
@@ -94,36 +104,31 @@ class Game {
         this.processTurn();
     }
     
-    // -- QUẢN LÝ LƯỢT CHƠI VÀ VÒNG CHƠI --
     processTurn() {
         if (this.gameOver) return;
         this.updateActivePlayerUI();
         const currentPlayer = this.players[this.currentPlayerIndex];
         this.updateMessage(`Đến lượt của ${currentPlayer.isHuman ? 'bạn' : 'Player ' + (currentPlayer.id + 1)}.`);
-
         if (currentPlayer.isHuman) {
             this.playBtn.disabled = false;
             this.passBtn.disabled = this.lastPlayedHand === null;
         } else {
             this.playBtn.disabled = true;
             this.passBtn.disabled = true;
-            setTimeout(() => this.aiMakeMove(), 2000); // AI suy nghĩ trong 2 giây
+            setTimeout(() => this.aiMakeMove(), 2000);
         }
     }
 
     nextTurn() {
-        let nextPlayerIndex = this.currentPlayerIndex;
         let activePlayers = this.players.filter(p => p.hand.length > 0 && !p.passed);
-
         if (activePlayers.length <= 1 && this.lastPlayedHand !== null) {
             this.newRound();
             return;
         }
-
+        let nextPlayerIndex = this.currentPlayerIndex;
         do {
             nextPlayerIndex = (nextPlayerIndex + 1) % 4;
         } while (this.players[nextPlayerIndex].passed || this.players[nextPlayerIndex].hand.length === 0);
-        
         this.currentPlayerIndex = nextPlayerIndex;
         this.processTurn();
     }
@@ -138,17 +143,14 @@ class Game {
         setTimeout(() => this.processTurn(), 2000);
     }
 
-    // -- HÀNH ĐỘNG CỦA NGƯỜI CHƠI --
     humanPlay() {
         const selectedCards = this.players[0].hand.filter(c => c.selected);
         if (selectedCards.length === 0) return;
-
         const combination = this.analyzeCombination(selectedCards);
         if (combination.type === 'invalid') {
             this.updateMessage("Bộ bài không hợp lệ!");
             return;
         }
-
         if (this.isValidPlay(combination)) {
             this.executePlay(this.players[0], selectedCards, combination);
         } else {
@@ -157,18 +159,22 @@ class Game {
     }
 
     humanPass() {
+        if(this.lastPlayedHand === null) return;
         this.players[0].passed = true;
         this.updateMessage("Bạn đã bỏ lượt.");
         this.nextTurn();
     }
     
-    // -- LOGIC CỦA MÁY (AI) --
     aiMakeMove() {
         const aiPlayer = this.players[this.currentPlayerIndex];
+        if (this.lastPlayedHand === null) {
+            const smallestCardCombo = this.analyzeCombination([aiPlayer.hand[0]]);
+            this.executePlay(aiPlayer, [aiPlayer.hand[0]], smallestCardCombo);
+            return;
+        }
         const possibleMoves = this.findAllPlayableMoves(aiPlayer);
-
         if (possibleMoves.length > 0) {
-            const bestMove = possibleMoves[0]; 
+            const bestMove = possibleMoves[0];
             this.executePlay(aiPlayer, bestMove.cards, bestMove);
         } else {
             aiPlayer.passed = true;
@@ -204,9 +210,7 @@ class Game {
                 for (let j = 3; j <= cardsInSuit.length - i; j++) {
                     const potentialStraight = cardsInSuit.slice(i, i + j);
                     const combo = this.analyzeCombination(potentialStraight);
-                    if (combo.type === 'straight') {
-                        allCombos.push(combo);
-                    }
+                    if (combo.type === 'straight') allCombos.push(combo);
                 }
             }
         }
@@ -215,7 +219,6 @@ class Game {
             .sort((a, b) => a.value - b.value);
     }
     
-    // -- CÁC HÀM LOGIC CỐT LÕI --
     executePlay(player, cards, combination) {
         player.hand = player.hand.filter(cardInHand => !cards.find(playedCard => playedCard.value === cardInHand.value));
         cards.forEach(c => c.selected = false);
@@ -226,8 +229,8 @@ class Game {
         if (player.hand.length === 0) {
             this.gameOver = true;
             this.updateMessage(`GAME OVER! ${this.lastPlayedHand.playerName} đã thắng!`);
-            this.startBtn.style.display = 'block';
-            this.startBtn.innerText = 'Chơi Lại';
+            // SỬA LỖI: Hiển thị nút "Chơi lại" thay vì nút bắt đầu cũ
+            this.playAgainBtn.style.display = 'inline-block';
             this.playBtn.disabled = true;
             this.passBtn.disabled = true;
             return;
@@ -235,54 +238,20 @@ class Game {
         this.nextTurn();
     }
     
-    // =======================================================================
-    // HÀM isValidPlay ĐÃ ĐƯỢC CẬP NHẬT VỚI LUẬT MỚI
-    // =======================================================================
     isValidPlay(combination) {
         const lastCombo = this.lastPlayedHand;
-
-        // 1. Nếu là bắt đầu vòng mới, luôn hợp lệ.
-        if (lastCombo === null) {
-            return true;
-        }
-
-        // 2. Xử lý các luật chặt đặc biệt (Ngoại lệ - không cần đồng chất)
-        // a. Tứ quý chặt Heo
-        if (combination.type === 'four_of_a_kind' && lastCombo.type === 'single' && lastCombo.cards[0].rank === '2') {
-            return true;
-        }
-        // b. Tứ quý chặt Tứ quý thấp hơn
-        if (combination.type === 'four_of_a_kind' && lastCombo.type === 'four_of_a_kind') {
-            return combination.value > lastCombo.value;
-        }
-        
-        // 3. Xử lý khi đánh Heo (2) (Ngoại lệ - không cần đồng chất khi chặt lá rác khác)
+        if (lastCombo === null) return true;
+        if (combination.type === 'four_of_a_kind' && lastCombo.type === 'single' && lastCombo.cards[0].rank === '2') return true;
+        if (combination.type === 'four_of_a_kind' && lastCombo.type === 'four_of_a_kind') return combination.value > lastCombo.value;
         if (combination.type === 'single' && combination.cards[0].rank === '2') {
-            if (lastCombo.type === 'single') {
-                 return combination.value > lastCombo.value; // Chặt được Heo nhỏ hơn hoặc lá rác bất kỳ
-            }
-            return false; // Heo không chặt được đôi, sảnh...
-        }
-
-        // 4. Áp dụng luật chơi thông thường
-        // a. Phải cùng loại (đôi vs đôi, sảnh vs sảnh...)
-        if (combination.type !== lastCombo.type) {
+            if (lastCombo.type === 'single') return combination.value > lastCombo.value;
             return false;
         }
-        // b. Sảnh phải cùng độ dài
-        if (combination.type === 'straight' && combination.length !== lastCombo.length) {
-            return false;
-        }
-
-        // 5. >>> QUY TẮC MỚI: PHẢI ĐỒNG CHẤT <<<
-        // Chất của bộ bài được quyết định bởi lá bài cao nhất trong bộ
+        if (combination.type !== lastCombo.type) return false;
+        if (combination.type === 'straight' && combination.length !== lastCombo.length) return false;
         const newHighestCardSuit = combination.cards[combination.cards.length - 1].suit;
         const lastHighestCardSuit = lastCombo.cards[lastCombo.cards.length - 1].suit;
-        if (newHighestCardSuit !== lastHighestCardSuit) {
-            return false;
-        }
-
-        // 6. Cuối cùng, giá trị phải lớn hơn
+        if (newHighestCardSuit !== lastHighestCardSuit) return false;
         return combination.value > lastCombo.value;
     }
     
@@ -310,7 +279,6 @@ class Game {
         return { type: 'invalid' };
     }
 
-    // -- CÁC HÀM HIỂN THỊ (RENDER) --
     renderAll() {
         this.renderPlayerHand();
         this.players.forEach(p => { if(!p.isHuman) this.renderOpponentHand(p) });
@@ -355,4 +323,6 @@ class Game {
     }
 }
 
+// Sửa lại một chút giao diện ban đầu
+document.getElementById('controls').style.visibility = 'hidden';
 window.onload = () => new Game();
