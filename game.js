@@ -11,7 +11,7 @@ class Card {
         this.value = RANKS[rank] * 4 + SUITS[suit];
         this.selected = false;
     }
-    getHTML() { /* ... function from previous example ... */ 
+    getHTML() {
         const cardDiv = document.createElement('div');
         cardDiv.classList.add('card');
         cardDiv.dataset.value = this.value;
@@ -115,13 +115,11 @@ class Game {
         let nextPlayerIndex = this.currentPlayerIndex;
         let activePlayers = this.players.filter(p => p.hand.length > 0 && !p.passed);
 
-        // Nếu chỉ còn 1 người chưa bỏ lượt, vòng chơi kết thúc
         if (activePlayers.length <= 1 && this.lastPlayedHand !== null) {
             this.newRound();
             return;
         }
 
-        // Tìm người chơi tiếp theo chưa bỏ lượt
         do {
             nextPlayerIndex = (nextPlayerIndex + 1) % 4;
         } while (this.players[nextPlayerIndex].passed || this.players[nextPlayerIndex].hand.length === 0);
@@ -154,7 +152,7 @@ class Game {
         if (this.isValidPlay(combination)) {
             this.executePlay(this.players[0], selectedCards, combination);
         } else {
-            this.updateMessage("Không thể đánh bộ này!");
+            this.updateMessage("Không thể đánh bộ này! Phải cùng loại, cùng chất và lớn hơn.");
         }
     }
 
@@ -170,11 +168,9 @@ class Game {
         const possibleMoves = this.findAllPlayableMoves(aiPlayer);
 
         if (possibleMoves.length > 0) {
-            // Chiến lược: Chơi bộ bài yếu nhất có thể
-            const bestMove = possibleMoves[0]; // Mảng đã được sắp xếp từ yếu đến mạnh
+            const bestMove = possibleMoves[0]; 
             this.executePlay(aiPlayer, bestMove.cards, bestMove);
         } else {
-            // Bỏ lượt
             aiPlayer.passed = true;
             this.updateMessage(`Player ${aiPlayer.id + 1} bỏ lượt.`);
             this.nextTurn();
@@ -184,23 +180,18 @@ class Game {
     findAllPlayableMoves(player) {
         const allCombos = [];
         const hand = player.hand;
-
-        // Tìm tất cả các bộ (rác, đôi, sám, tứ quý)
         const rankGroups = {};
         hand.forEach(card => {
             if (!rankGroups[card.rank]) rankGroups[card.rank] = [];
             rankGroups[card.rank].push(card);
         });
-
         for (const rank in rankGroups) {
             const group = rankGroups[rank];
-            if (group.length >= 1) allCombos.push(this.analyzeCombination([group[0]])); // Rác
-            if (group.length >= 2) allCombos.push(this.analyzeCombination(group.slice(0, 2))); // Đôi
-            if (group.length >= 3) allCombos.push(this.analyzeCombination(group.slice(0, 3))); // Sám
-            if (group.length >= 4) allCombos.push(this.analyzeCombination(group)); // Tứ quý
+            if (group.length >= 1) allCombos.push(this.analyzeCombination([group[0]]));
+            if (group.length >= 2) allCombos.push(this.analyzeCombination(group.slice(0, 2)));
+            if (group.length >= 3) allCombos.push(this.analyzeCombination(group.slice(0, 3)));
+            if (group.length >= 4) allCombos.push(this.analyzeCombination(group));
         }
-
-        // Tìm tất cả các sảnh
         const suitGroups = {};
         hand.forEach(card => {
             if (!suitGroups[card.suit]) suitGroups[card.suit] = [];
@@ -219,8 +210,6 @@ class Game {
                 }
             }
         }
-        
-        // Lọc ra những bộ có thể đánh được và sắp xếp từ yếu đến mạnh
         return allCombos
             .filter(combo => this.isValidPlay(combo))
             .sort((a, b) => a.value - b.value);
@@ -228,19 +217,12 @@ class Game {
     
     // -- CÁC HÀM LOGIC CỐT LÕI --
     executePlay(player, cards, combination) {
-        // Cập nhật tay bài của người chơi
         player.hand = player.hand.filter(cardInHand => !cards.find(playedCard => playedCard.value === cardInHand.value));
         cards.forEach(c => c.selected = false);
-
         this.lastPlayedHand = { ...combination, playerID: player.id, playerName: player.isHuman ? 'Bạn' : `Player ${player.id + 1}` };
-        
-        // Reset trạng thái bỏ lượt của tất cả người chơi
         this.players.forEach(p => p.passed = false);
-        
         this.renderAll();
         this.updateMessage(`${this.lastPlayedHand.playerName} đã đánh ${combination.type} ${combination.cards.map(c=>c.rank+c.suit).join(' ')}`);
-        
-        // Kiểm tra thắng
         if (player.hand.length === 0) {
             this.gameOver = true;
             this.updateMessage(`GAME OVER! ${this.lastPlayedHand.playerName} đã thắng!`);
@@ -253,23 +235,58 @@ class Game {
         this.nextTurn();
     }
     
+    // =======================================================================
+    // HÀM isValidPlay ĐÃ ĐƯỢC CẬP NHẬT VỚI LUẬT MỚI
+    // =======================================================================
     isValidPlay(combination) {
-        if (this.lastPlayedHand === null) return true;
-
         const lastCombo = this.lastPlayedHand;
-        
-        // Luật chặt đặc biệt: Tứ quý chặt Heo
-        if (combination.type === 'four_of_a_kind' && lastCombo.type === 'single' && lastCombo.cards[0].rank === '2') {
+
+        // 1. Nếu là bắt đầu vòng mới, luôn hợp lệ.
+        if (lastCombo === null) {
             return true;
         }
 
-        if (combination.type !== lastCombo.type) return false;
-        if (combination.type === 'straight' && combination.length !== lastCombo.length) return false;
+        // 2. Xử lý các luật chặt đặc biệt (Ngoại lệ - không cần đồng chất)
+        // a. Tứ quý chặt Heo
+        if (combination.type === 'four_of_a_kind' && lastCombo.type === 'single' && lastCombo.cards[0].rank === '2') {
+            return true;
+        }
+        // b. Tứ quý chặt Tứ quý thấp hơn
+        if (combination.type === 'four_of_a_kind' && lastCombo.type === 'four_of_a_kind') {
+            return combination.value > lastCombo.value;
+        }
         
+        // 3. Xử lý khi đánh Heo (2) (Ngoại lệ - không cần đồng chất khi chặt lá rác khác)
+        if (combination.type === 'single' && combination.cards[0].rank === '2') {
+            if (lastCombo.type === 'single') {
+                 return combination.value > lastCombo.value; // Chặt được Heo nhỏ hơn hoặc lá rác bất kỳ
+            }
+            return false; // Heo không chặt được đôi, sảnh...
+        }
+
+        // 4. Áp dụng luật chơi thông thường
+        // a. Phải cùng loại (đôi vs đôi, sảnh vs sảnh...)
+        if (combination.type !== lastCombo.type) {
+            return false;
+        }
+        // b. Sảnh phải cùng độ dài
+        if (combination.type === 'straight' && combination.length !== lastCombo.length) {
+            return false;
+        }
+
+        // 5. >>> QUY TẮC MỚI: PHẢI ĐỒNG CHẤT <<<
+        // Chất của bộ bài được quyết định bởi lá bài cao nhất trong bộ
+        const newHighestCardSuit = combination.cards[combination.cards.length - 1].suit;
+        const lastHighestCardSuit = lastCombo.cards[lastCombo.cards.length - 1].suit;
+        if (newHighestCardSuit !== lastHighestCardSuit) {
+            return false;
+        }
+
+        // 6. Cuối cùng, giá trị phải lớn hơn
         return combination.value > lastCombo.value;
     }
     
-    analyzeCombination(cards) { /* ... function from previous example, no changes needed ... */ 
+    analyzeCombination(cards) {
         const n = cards.length;
         if (n === 0) return { type: 'invalid' };
         cards.sort((a,b) => a.value - b.value);
